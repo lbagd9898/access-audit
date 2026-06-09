@@ -1,0 +1,61 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id          String       @id @default(cuid())
+  email       String       @unique
+  password    String?
+  name        String?
+  role        String       // still keep this for RBAC middleware
+  createdAt   DateTime     @default(now())
+
+  manager     Manager?     // one-to-one, only populated if role = "manager"
+  auditor     Auditor?     // one-to-one, only populated if role = "auditor"
+
+  accounts    Account[]
+}
+
+model Manager {
+  id            String    @id @default(cuid())
+  userId        String    @unique
+  user          User      @relation(fields: [userId], references: [id])
+  organisation  String?
+  phone         String?
+  auditors      Auditor[]
+}
+
+model Auditor {
+  id            String    @id @default(cuid())
+  userId        String    @unique
+  user          User      @relation(fields: [userId], references: [id])
+  managerId     String
+  manager       Manager   @relation(fields: [managerId], references: [id])
+  certifications String?
+  country       String?
+
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
