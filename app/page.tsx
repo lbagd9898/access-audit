@@ -1,6 +1,28 @@
+"use client";
+
 import Link from "next/link";
+import { useState } from "react";
+import { signInSchema } from "@/lib/validations/auth";
 
 export default function Home() {
+  const [errors, setErrors] = useState<unknown[]>([]);
+
+  async function handleSubmit(formData: FormData) {
+    const data = {
+      email: formData.get("email") as string,
+      password: formData.get("password") as string,
+    };
+
+    const result = signInSchema.safeParse(data);
+    console.log(result);
+
+    if (!result.success) {
+      setErrors(result.error.issues);
+      return;
+    }
+
+    setErrors([]);
+  }
   return (
     <div className="min-h-screen flex flex-col gap-10 items-center justify-start bg-zinc-50 px-4">
       <h1 className="text-4xl font-bold text-[#001f5b] p-15">
@@ -14,7 +36,7 @@ export default function Home() {
         </div>
 
         <div className="px-8 py-8 flex flex-col gap-4">
-          <form className="flex flex-col gap-3">
+          <form action={handleSubmit} className="flex flex-col gap-3">
             <div className="flex flex-col gap-1">
               <label
                 htmlFor="email"
@@ -25,6 +47,7 @@ export default function Home() {
               <input
                 id="email"
                 type="email"
+                name="email"
                 autoComplete="email"
                 placeholder="you@example.com"
                 className="rounded-lg border border-zinc-300 px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-[#001f5b] focus:border-transparent"
@@ -41,6 +64,7 @@ export default function Home() {
               <input
                 id="password"
                 type="password"
+                name="password"
                 autoComplete="current-password"
                 placeholder="••••••••"
                 className="rounded-lg border border-zinc-300 px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-[#001f5b] focus:border-transparent"
@@ -54,7 +78,22 @@ export default function Home() {
               Sign in
             </button>
           </form>
-
+          {errors.length > 0 && (
+            <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 flex flex-col gap-1">
+              {errors.map((error: unknown, index: number) => {
+                const e = error as {
+                  code: string;
+                  path: string[];
+                  message: string;
+                };
+                return (
+                  <p key={index} className="text-sm text-red-600">
+                    {e.message}
+                  </p>
+                );
+              })}
+            </div>
+          )}
           <div className="flex items-center gap-3">
             <div className="h-px flex-1 bg-zinc-200" />
             <span className="text-xs text-zinc-400">or</span>

@@ -5,7 +5,6 @@ import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { registerSchema } from "@/lib/validations/auth";
-import { ZodError } from "zod";
 
 function EyeIcon({ open }: { open: boolean }) {
   return open ? (
@@ -80,28 +79,26 @@ function PasswordInput({
 
 export default function RegisterPage() {
   const router = useRouter();
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [errors, setErrors] = useState<unknown[]>([]);
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
+  async function handleSubmit(formData: FormData) {
     console.log("submitted");
-    const form = new FormData(e.currentTarget);
 
     const data = {
-      name: form.get("name") as string,
-      email: form.get("email") as string,
-      password: form.get("password") as string,
+      name: formData.get("name") as string,
+      email: formData.get("email") as string,
+      password: formData.get("password") as string,
     };
 
     // Client-side Zod validation
     const result = registerSchema.safeParse(data);
     if (!result.success) {
       // Flatten turns ZodError into { name: "msg", email: "msg" }
-      setErrors(result.error.flatten().fieldErrors as Record<string, string>);
+      setErrors(result.error.issues);
       return; // stop here — don't hit the API
     }
     console.log("form data read", data);
-    setErrors({}); // clear old errors
+    setErrors([]);
 
     const res = await fetch("/api/register", {
       method: "POST",
@@ -111,7 +108,7 @@ export default function RegisterPage() {
 
     if (!res.ok) {
       const json = await res.json();
-      setErrors({ form: json.error });
+      setErrors(json.error);
       return;
     }
 
@@ -138,7 +135,7 @@ export default function RegisterPage() {
         </div>
 
         <div className="px-8 py-8 flex flex-col gap-4">
-          <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+          <form action={handleSubmit} className="flex flex-col gap-3">
             <div className="flex flex-col gap-1">
               <label
                 htmlFor="name"
@@ -211,16 +208,20 @@ export default function RegisterPage() {
             </button>
           </form>
 
-          {Object.keys(errors).length > 0 && (
+          {errors.length > 0 && (
             <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 flex flex-col gap-1">
-              {Object.entries(errors).map(([field, message]) => (
-                <p key={field} className="text-sm text-red-600">
-                  {field !== "form" && (
-                    <span className="font-medium capitalize">{field}: </span>
-                  )}
-                  {Array.isArray(message) ? message[0] : message}
-                </p>
-              ))}
+              {errors.map((error: unknown, index: number) => {
+                const e = error as {
+                  code: string;
+                  path: string[];
+                  message: string;
+                };
+                return (
+                  <p key={index} className="text-sm text-red-600">
+                    {e.message}
+                  </p>
+                );
+              })}
             </div>
           )}
 
